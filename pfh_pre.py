@@ -61,7 +61,6 @@ output: target_indices_with_neighbor: 1d array
 '''
 def unique_targets_and_neighbors_indices(closest_indices, target_indices = None, for_FPFH = False):
     N = closest_indices.shape[0]
-    target_indices_array = None
 
     if target_indices is not None:
         if not (isinstance(target_indices, np.ndarray)):
@@ -70,10 +69,10 @@ def unique_targets_and_neighbors_indices(closest_indices, target_indices = None,
             except:
                 raise TypeError("target_indices must be a ndarray or list or tuple.")
 
-        if not np.issubdtype(target_indices_array.dtype, np.integer):
+        if not np.issubdtype(target_indices.dtype, np.integer):
             raise TypeError("target_indices must be an int.")
 
-        if np.any((target_indices_array < 0) | (target_indices_array > N - 1)):
+        if np.any(target_indices < 0 or target_indices > N - 1):
             raise ValueError("indices must be in the range of number of points")
 
         if for_FPFH:
@@ -83,8 +82,7 @@ def unique_targets_and_neighbors_indices(closest_indices, target_indices = None,
             target_indices_with_neighbor = target_indices_array
 
     else:
-        target_indices_array = np.arange(N)
-        target_indices_with_neighbor = target_indices_array
+        target_indices_with_neighbor = np.arange(N)
 
     return target_indices_with_neighbor, target_indices_array
 
@@ -195,7 +193,7 @@ def compute_all_features(X, closest_indices, normal_matrix, target_indices_with_
     k = closest_indices_exclusive.shape[1]
 
     if target_indices_with_neighbor is not None:
-        indices = np.asarray(target_indices_with_neighbor, dtype=int)
+        indices = target_indices_with_neighbor
     else:
         indices = np.arange(N)
 
@@ -203,7 +201,6 @@ def compute_all_features(X, closest_indices, normal_matrix, target_indices_with_
 
     all_features = np.zeros((target_num, k, 3))
     features_dict = {}
-    target_lookup = None if target_indices_with_neighbor is None else set(indices.tolist())
 
     for point_index_in_list in range(target_num):
         i = indices[point_index_in_list]
@@ -220,15 +217,13 @@ def compute_all_features(X, closest_indices, normal_matrix, target_indices_with_
                 load_features = False
 
                 j = int(j)
-                if (target_lookup is None) or (j in target_lookup):
-                    previous_features = features_dict.get(j, None)
-                    if previous_features is not None:
-                        temp_features = previous_features[np.where(closest_indices_exclusive[j, :] == i), :]
-                        if temp_features.size != 0:
-                            load_features = True
+                if j in target_indices_with_neighbor:
+                    temp_features = features_dict[j][np.where(closest_indices_exclusive[j, :] == i), :]
+                    if temp_features.size != 0:
+                        load_features = True
                     
 
-                if (target_lookup is not None and j not in target_lookup) or not load_features:
+                if j not in target_indices_with_neighbor or not load_features:
                     temp_features = pair_features(X[:, i], 
                                                   X[:, j], 
                                                   normal_matrix[:, i], 
@@ -266,27 +261,24 @@ def histogram_separation(total_points_features, bins_per_feature = 4, method = '
         if bins_per_feature <=0:
             raise ValueError("Number of bins must be non-negative")
 
-        number_of_total_bin = bins_per_feature ** number_features
+        number_of_total_bin = number_features * bins_per_feature
 
     elif isinstance(bins_per_feature, list):
         if all(isinstance(item, int) for item in bins_per_feature):
             is_equal_bin_number = False
-            if len(bins_per_feature) != number_features:
-                raise ValueError("bins_per_feature length must match number of features")
+            number_of_total_bin = 0
             for i in bins_per_feature:
                 if i <=0 :
                     raise ValueError("Number of bins must be non-negative")
 
-            number_of_total_bin = int(np.prod(bins_per_feature))
+                number_of_total_bin += i
 
         else:
             raise TypeError("Wrong bins_per_feature type!!! \n Pass in int/int list/int ndarray")
 
     elif isinstance(bins_per_feature, np.ndarray) and np.issubdtype(bins_per_feature.dtype, np.integer):
         is_equal_bin_number = False
-        if bins_per_feature.shape[0] != number_features:
-            raise ValueError("bins_per_feature length must match number of features")
-        if np.any(bins_per_feature <= 0):
+        if np.any(bins_per_feature < 0):
             raise ValueError("Number of bins must be non-negative")
 
         number_of_total_bin = int(np.prod(bins_per_feature))
@@ -391,9 +383,6 @@ def histogram_computation_FPFH(total_points_features, closest_indices, closest_d
 
     mapped_indices = lookup[indices]
 
-    if np.any(mapped_indices < 0):
-        raise ValueError("Found neighbors whose SPFH was not precomputed.")
-
     including_neighbor_features  = np.take(total_points_features, mapped_indices, axis=0)
 
     FPFH = np.sum(dists_weights * including_neighbor_features, axis = 1)
@@ -471,59 +460,36 @@ def coorespondence(all_points_histogram1, all_points_histogram2,
 
 def main():
 
-    np.random.seed(0)
-
     # --- Step 1: create a synthetic point cloud ---
-    N = 30
+    N = 20
     X = np.random.rand(3, N)  # 3xN matrix of points in [0,1]^3
-    ratio_or_k = 0.2          # 20% of points as neighbors
+    ratio = 0.2               # 20% of points as neighbors
 
     print("Point cloud shape:", X.shape)
 
-    # --- Step 2: compute neighbors and distances ---
-    closest_indices, closest_dists = point_neighbors(X, ratio_or_k)
+    # --- Step 2: compute neighbors ---
+    closest_indices = point_neighbors(X, ratio)
     print("closest_indices shape:", closest_indices.shape)
-    print("neighbors of point 0 (including itself):", closest_indices[0])
+    print("neighbors of point 0:", closest_indices[0])
 
-    # --- Step 3: prepare target sets (use all points, include neighbors for FPFH) ---
-    target_indices_with_neighbor, target_indices_array = unique_targets_and_neighbors_indices(
-        closest_indices, target_indices=None, for_FPFH=True
-    )
-
-    # --- Step 4: compute normals ---
-    normal_matrix = surface_normals(X, closest_indices)
+    # --- Step 3: compute normals ---
+    normal_matrix = surface_normals(X, ratio)
     print("normal_matrix shape:", normal_matrix.shape)
     print("normal of point 0:", normal_matrix[:, 0])
 
-    # --- Step 5: compute pairwise features for all required points ---
-    features_dict, all_features = compute_all_features(
-        X, closest_indices, normal_matrix, target_indices_with_neighbor
-    )
-    print("all_features shape (points, neighbors, features):", all_features.shape)
+    # --- Step 4: compute features for one point ---
+    pt_index = 0
+    neighbors_indices = closest_indices[pt_index, :]
+    features = point_features(pt_index, neighbors_indices, X, normal_matrix)
+    print("features shape (point 0):", features.shape)
+    print("first few features for point 0:\n", features[:5])
 
-    # --- Step 6: compute histogram bin boundaries ---
-    bins_per_feature = 5
-    features_bin_boundary, number_of_total_bin = histogram_separation(
-        all_features, bins_per_feature=bins_per_feature, method='percentile'
-    )
-    print("bins per feature:", bins_per_feature, "total bin combinations:", number_of_total_bin)
-
-    # --- Step 7: compute SPFH for all selected points ---
-    spfh = histogram_computation_SPFH(all_features, features_bin_boundary, number_of_total_bin)
-    print("SPFH shape:", spfh.shape)
-
-    # --- Step 8: compute FPFH for target points ---
-    fpfh = histogram_computation_FPFH(
-        spfh, closest_indices, closest_dists, target_indices_array, target_indices_with_neighbor
-    )
-    print("FPFH shape:", fpfh.shape)
-    print("FPFH sample (first target point, first 5 bins):", fpfh[0, :5])
-
-    # --- Basic sanity checks ---
-    assert all_features.shape[0] == target_indices_with_neighbor.shape[0]
-    assert spfh.shape[0] == target_indices_with_neighbor.shape[0]
-    assert fpfh.shape[0] == target_indices_array.shape[0]
-    print("All sanity checks passed.")
+    # --- Step 5: compute all features ---
+    features_dict = compute_all_features(X, closest_indices, normal_matrix)
+    print("Number of entries in features_dict:", len(features_dict))
+    for key in list(features_dict.keys())[:3]:
+        print(f"Point {key} features shape:", features_dict[key].shape)
+        print(features_dict[key])
 
 if __name__ == "__main__":
     main()

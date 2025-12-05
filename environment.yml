@@ -1,0 +1,11 @@
+name: pfh
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - matplotlib
+  - open3d
+  - pip
+      # 如果还需要其他 pip-only 包，写在这里
