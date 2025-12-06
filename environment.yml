@@ -7,5 +7,6 @@ dependencies:
   - numpy
   - matplotlib
   - open3d
+  - scipy
   - pip
       # 如果还需要其他 pip-only 包，写在这里

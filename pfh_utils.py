@@ -196,7 +196,6 @@ output: features_dict: k x 3 np.array/matrix with columns (alpha. phi, theta) fo
         with axis 0: target index; (axis 2: (alpha. phi, theta))
 '''
 def compute_all_features(X, closest_indices, normal_matrix, target_indices_with_neighbor):
-    N = X.shape[1]
 
     closest_indices_exclusive = closest_indices[:, 1:]
     k = closest_indices_exclusive.shape[1]
