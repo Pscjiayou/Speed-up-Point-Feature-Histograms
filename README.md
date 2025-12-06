@@ -41,7 +41,7 @@ git push origin your_name-feature
 ```
 
 ## Using the codes
-The core of Point Feature Histogram is in pfh_utils.py and icp_pfh.py.
+The core of Point Feature Histogram is in `pfh_utils.py` and `icp_pfh.py`.
 
 All runtime settings are read from `config_icp_pfh.json` when you run `python -u icp_pfh.py`. Modify the JSON instead of editing code:
 
