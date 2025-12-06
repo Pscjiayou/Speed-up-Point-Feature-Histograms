@@ -1,7 +1,8 @@
 {
   "pc_source": "data/cloud_icp_source.csv",
   "pc_target": "data/cloud_icp_target3.csv",
-  "ratio_or_k": 0.01,
+  "pcd_or_csv": "csv",
+  "ratio_or_k": 10,
   "use_target_indices": true,
   "for_FPFH": false,
   "which_cloud_for_bin": "target",
