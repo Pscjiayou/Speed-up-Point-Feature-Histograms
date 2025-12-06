@@ -1,0 +1,16 @@
+{
+  "pc_source": "data/cloud_icp_source.csv",
+  "pc_target": "data/cloud_icp_target3.csv",
+  "ratio_or_k": 0.01,
+  "use_target_indices": true,
+  "for_FPFH": false,
+  "which_cloud_for_bin": "target",
+  "bins_per_feature": [4, 5, 6],
+  "bin_seperating_method": "equal_width",
+  "distance_method": "l1",
+  "max_iteration": 50,
+  "error_bound": 1e-2,
+  "colors": ["#8ecae6", "#8bc34a", "#fcba03"],
+  "markers": ["o", "^", "s"]
+}
+
