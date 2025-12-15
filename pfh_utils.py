@@ -2,6 +2,7 @@ import numpy as np
 
 
 '''
+This whole python file is manually developed by Shicheng
 The key parameters:
     ratio_or_k = float (in the range 0 ~ 1) / int larger than 3
     target_indices_1 = None / 1-d array of int / list of int
@@ -135,9 +136,23 @@ input: pt: (3,) np.arry/matrix, target point
 
 output: features: 1x3 np.array with elements (alpha. phi, theta)
 '''
-def pair_features(pt, ps, normal_pt, normal_ps):
+# def pair_features(pt, ps, normal_pt, normal_ps):
+def pair_features(pi, pj, normal_pi, normal_pj):
+    d = np.linalg.norm(pi - pj)
+
+    if np.arccos(np.dot((pj - pi) / d, normal_pi)) <= np.arccos(np.dot((pi - pj) / d, normal_pj)):
+        pt = pj
+        normal_pt = normal_pj
+        ps = pi
+        normal_ps = normal_pi
+    else:
+        pt = pi
+        normal_pt = normal_pi
+        ps = pj
+        normal_ps = normal_pj
+
+    
     diff = pt - ps
-    d = np.linalg.norm(diff)
     u = normal_ps
     v = np.cross(u, diff/d)
     w = np.cross(u, v)
@@ -163,20 +178,42 @@ input: pt_index: int: target point index,
 output: features: nx3 np.array/matrix with columns (alpha. phi, theta)
 '''
 def point_features(pt_index, neighbors_indices, X, normal_matrix):
+    query_point = X[:, pt_index].reshape((3, -1))
+    query_normal = normal_matrix[:, pt_index].reshape((3, -1))
     neighbors = X[:, neighbors_indices]
-    pt = X[:, pt_index].reshape((3, 1))
-    diff =  pt - neighbors
-    d = np.linalg.norm(diff, axis = 0)
-    u = normal_matrix[:, neighbors_indices]
+
+    d1 = neighbors - query_point
+    d2 = query_point - neighbors
+
+    # 防止除零，先做安全归一化
+    d1_norm = np.linalg.norm(d1, axis=0, keepdims=True)
+    d2_norm = np.linalg.norm(d2, axis=0, keepdims=True)
+    d1 = d1 / d1_norm
+    d2 = d2 / d2_norm
+
+    d1 = np.arccos(np.sum(d1 * query_normal, axis = 0))
+    d2 = np.arccos(np.sum(d2 * normal_matrix[:, neighbors_indices], axis = 0))
+
+    cond = d1 <= d2
+
+    ps_indices = np.where(cond, pt_index, neighbors_indices)
+    pt_indices = np.where(cond, neighbors_indices, pt_index)
+
+    ps = X[:, ps_indices]
+    pt = X[:, pt_indices]
+    diff =  pt - ps
+    d = np.linalg.norm(diff, axis = 0, keepdims=True)
+    u = normal_matrix[:, ps_indices]
     diff_d = diff/d
 
     v = np.cross(u.T, diff_d.T).T
     w = np.cross(u.T, v.T).T
 
-    n = normal_matrix[:, pt_index].reshape((3, 1))
-    alpha = (v.T @ n).reshape(-1)
+    n = normal_matrix[:, pt_indices]
+
+    alpha = np.sum(v * n, axis=0)
     phi = np.diag(u.T @ diff_d).reshape(-1)
-    theta = np.arctan2((w.T @ n).reshape(-1), (u.T @ n).reshape(-1))
+    theta = np.arctan2(np.sum(w * n, axis=0), np.sum(u * n, axis=0))
 
     features = np.column_stack([alpha, phi, theta])
     return features
@@ -551,11 +588,11 @@ input:
 output:
     cross_point_cloud_closest_indices: (N1, 2) array, each row is (idx in cloud1, matched idx in cloud2)
 '''
-def pfh_matching(point_cloud_1, ratio_or_k = 10, target_indices = None, for_FPFH = False, 
+def pfh_matching(point_cloud_1, point_cloud_2, ratio_or_k = 10, target_indices = None, for_FPFH = False, 
                 which_cloud_for_bin = "Target", features_bin_boundary_Target = None, number_of_total_bin_Target = None, 
                 all_features_2 = None, total_points_histogram_2 = None, closest_indices_2 = None, dists_2 = None, 
                 target_indices_array_2 = None, target_indices_with_neighbor_2 = None,
-                bins_per_feature = 4, bin_seperating_method = "equal_width", distance_method = "l2"):
+                bins_per_feature = 4, bin_seperating_method = "equal_width", distance_method = "l2", initialization_runs = 50, ratio_init_sampling = 0.8):
     closest_indices_1, dists_1, target_indices_with_neighbor_1, target_indices_array_1, all_features_1 = pfh_raw_features_preparation(point_cloud_1, 
                                                                                                                                         ratio_or_k, target_indices, for_FPFH)
                                                     
@@ -604,10 +641,46 @@ def pfh_matching(point_cloud_1, ratio_or_k = 10, target_indices = None, for_FPFH
             total_points_histogram_2 = histogram_computation_FPFH(total_points_histogram_2, closest_indices_2, dists_2, 
                                     target_indices_array_2, target_indices_with_neighbor_2)
 
-    cross_point_cloud_closest_indices = correspondence(total_points_histogram_1, total_points_histogram_2, 
-    target_indices_array_1, target_indices_array_2, distance_method)
+    error = np.inf
+    transform_matrix = np.eye(4)
 
-    return cross_point_cloud_closest_indices
+    num_target = target_indices_array_1.shape[0]
+    size = max(1, int(num_target * ratio_init_sampling))
+
+    init_iter = 0
+    while init_iter < initialization_runs:
+        selection_1 = np.random.choice(num_target, size = size, replace = False)
+        selection_2 = np.random.choice(num_target, size = size, replace = False)
+
+        cross_point_cloud_closest_indices = correspondence(total_points_histogram_1[selection_1], total_points_histogram_2[selection_2], 
+        target_indices_array_1[selection_1], target_indices_array_2[selection_2], distance_method)
+
+        p_sub = point_cloud_1[:, cross_point_cloud_closest_indices[:, 0]]
+        q_sub = point_cloud_2[:, cross_point_cloud_closest_indices[:, 1]]
+
+        p_bar = np.mean(p_sub, axis = 1).reshape((3, 1))
+        q_bar = np.mean(q_sub, axis = 1).reshape((3, 1))
+        x = p_sub - p_bar
+        y = q_sub - q_bar
+        S = x @ y.T
+        U, Sigma, Vt = np.linalg.svd(S)
+
+        R = Vt.T @ np.diag(np.array([1, 1, np.linalg.det(Vt.T @ U.T)])) @ U.T
+        t = q_bar - R @ p_bar
+
+        p_transformed_temp = R @ point_cloud_1 + t
+
+        error_temp = np.mean(np.linalg.norm(p_transformed_temp - point_cloud_2, axis = 0))
+
+        init_iter += 1
+
+        if error > error_temp:
+            error = error_temp
+            transform_matrix[:3,:3] = R
+            transform_matrix[:3, 3] = t.ravel()
+            p_transformed = p_transformed_temp
+
+    return p_transformed, transform_matrix, error
 
 '''
 For testing whether the file is damaged or not
