@@ -1,0 +1,38 @@
+{
+  "data_loading": {
+    "pc_source": "data/ism_train_michael.pcd",
+    "pc_target": null,
+    "pcd_or_csv": "pcd"
+  },
+  "preprocessing": {
+    "voxel_size": 5,
+    "need_translation": false,
+    "noise_level": 1
+  },
+  "target_point_selection": {
+    "use_filter_or_not": true,
+    "filter": "density_filter", 
+    "density_number_of_neighbors": 20,
+    "density_selection_ratio": 0.001
+  },
+  "pfh_parameters": {
+    "use_pfh": true,
+    "ratio_or_k": 10,
+    "for_FPFH": true,
+    "which_cloud_for_bin": "both",
+    "bins_per_feature": 6,
+    "bin_seperating_method": "percentile",
+    "distance_method": "l2",
+    "initialization_runs": 50,
+    "ratio_init_sampling": 0.8
+  },
+  "icp_parameters": {
+    "max_iteration": 50,
+    "error_bound": 1e-2
+  },
+  "visualization": {
+    "colors": ["#8ecae6", "#8bc34a", "#fcba03"],
+    "markers": ["o", "^", "s"]
+  }
+}
+
