@@ -26,6 +26,11 @@ Creating branch
 git checkout -b your_name-feature
 ```
 
+Checking which branch it is
+```bash
+git branch
+```
+
 Pushing codes to your branch
 ```bash
 git add .
