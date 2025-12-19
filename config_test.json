@@ -7,7 +7,7 @@
   "preprocessing": {
     "voxel_size": 5,
     "need_translation": false,
-    "noise_level": 1
+    "noise_level": 0.1
   },
   "target_point_selection": {
     "use_filter_or_not": true,
