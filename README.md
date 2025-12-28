@@ -90,3 +90,5 @@ Run a simple demo (equivalent to the above):
 python3 demo.py
 ```
 
+## License
+This project is licensed under the MIT License.
