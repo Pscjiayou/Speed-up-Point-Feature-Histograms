@@ -1,5 +1,8 @@
 # Speed-up-Point-Feature-Histograms
-Final project for ROB 422 in Umich
+This is the final project of Umich ROB 422 by Shicheng Peng and Zehan Qin. The topic we chose is Point Cloud
+processing. Our target aims to implement the Point Cloud Feature Histogram method with various configuration and come up with
+an innovative way to reduce computational time. By the end, we will illustrate that our method works on
+various testing data, including real-world point cloud examples.
 
 ## Environment Setup
 In the project root, run:
