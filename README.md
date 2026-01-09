@@ -4,6 +4,16 @@ processing. Our target aims to implement the Point Cloud Feature Histogram metho
 an innovative way to reduce computational time. By the end, we will illustrate that our method works on
 various testing data, including real-world point cloud examples.
 
+## Pipeline Overview
+
+Our complete point cloud processing pipeline integrates several stages — preprocessing, feature extraction, PFH-based correspondence estimation, and ICP-based alignment.  
+The flowchart below illustrates the logic and data flow of our system:
+
+<p align="center">
+  <img src="flowchart.png" alt="Flowchart of PFH Pipeline" width="700"/>
+</p>
+
+
 ## Environment Setup
 In the project root, run:
 ```bash
@@ -89,6 +99,15 @@ Run a simple demo (equivalent to the above):
 ```bash
 python3 demo.py
 ```
+
+## Experimental Results and Visualization
+
+Below we show a comparison between the original source and target point clouds and the matching results after applying our accelerated PFH + ICP pipeline.
+
+<p align="center"> <img src="comparison_plot.png" alt="Comparison of Point Cloud Matching Results" width="400"/> </p>
+
+PFH-based correspondence shows perfect alignment (the top row) while basic Euclidean based ICP failing.
+Our results demonstrate that the optimized PFH pipeline achieves accurate alignment while significantly reducing computation time.
 
 ## License
 This project is licensed under the MIT License.
